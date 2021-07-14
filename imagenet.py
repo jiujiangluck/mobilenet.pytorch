@@ -46,6 +46,8 @@ model_names = default_model_names + customized_models_names
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument('-d', '--data', metavar='DIR',
                     help='path to dataset')
+parser.add_argument('-n', '--num_classes', default=5, type=int, metavar='N',
+                    help='number of classes')
 parser.add_argument('--data-backend', metavar='BACKEND', default='pytorch',
                     choices=DATA_BACKEND_CHOICES)
 parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
@@ -135,7 +137,7 @@ def main():
 
     # create model
     print("=> creating model '{}'".format(args.arch))
-    model = models.__dict__[args.arch](width_mult=args.width_mult)
+    model = models.__dict__[args.arch](num_classes=args.num_classes)
 
     if not args.distributed:
         if args.arch.startswith('alexnet') or args.arch.startswith('vgg'):
@@ -159,6 +161,7 @@ def main():
     if not os.path.isdir(args.checkpoint):
         mkdir_p(args.checkpoint)
 
+
     if args.resume:
         if os.path.isfile(args.resume):
             print("=> loading checkpoint '{}'".format(args.resume))
@@ -177,6 +180,22 @@ def main():
         logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title)
         logger.set_names(['Learning Rate', 'Train Loss', 'Valid Loss', 'Train Acc.', 'Valid Acc.'])
 
+    if args.pretrained:
+        from collections import OrderedDict
+        if os.path.isfile(args.weight):
+            print("=> loading pretrained weight '{}'".format(args.weight))
+            source_state = torch.load(args.weight)['state_dict']
+            target_state = OrderedDict()
+            for k, v in source_state.items():
+                if k[:7] != 'module.':
+                    k = 'module.' + k
+                if 'linear4' in k:
+                    target_state[k] = v[:args.num_classes, ...]
+                else:
+                    target_state[k] = v
+            model.load_state_dict(target_state)
+        else:
+            print("=> no weight found at '{}'".format(args.weight))
 
     cudnn.benchmark = True
 
@@ -198,7 +217,7 @@ def main():
         from collections import OrderedDict
         if os.path.isfile(args.weight):
             print("=> loading pretrained weight '{}'".format(args.weight))
-            source_state = torch.load(args.weight)
+            source_state = torch.load(args.weight)['state_dict']
             target_state = OrderedDict()
             for k, v in source_state.items():
                 if k[:7] != 'module.':

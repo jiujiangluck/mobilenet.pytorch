@@ -31,26 +31,22 @@ The [newly released model](https://github.com/d-li14/mobilenetv2.pytorch/blob/ma
 
 ```shell
 python imagenet.py \
-    -a mobilenetv2 \
-    -d <path-to-ILSVRC2012-data> \
+    -a mobilenetv3 \
+    -d ../dataset \
     --epochs 150 \
     --lr-decay cos \
     --lr 0.05 \
     --wd 4e-5 \
     -c <path-to-save-checkpoints> \
-    --width-mult <width-multiplier> \
-    --input-size <input-resolution> \
     -j <num-workers>
 ```
 
 ## Test
 ```shell
 python imagenet.py \
-    -a mobilenetv2 \
-    -d <path-to-ILSVRC2012-data> \
-    --weight <pretrained-pth-file> \
-    --width-mult <width-multiplier> \
-    --input-size <input-resolution> \
+    -a mobilenetv3 \
+    -d  ../dataset/ \
+    --weight ./checkpoint.pth.tar \
     -e
 ```
 
