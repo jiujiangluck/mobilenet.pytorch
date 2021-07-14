@@ -79,6 +79,8 @@ parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
+parser.add_argument('--wandb', action='store_true',
+                    help='use wandb')
 parser.add_argument('--pretrained', dest='pretrained', action='store_true',
                     help='use pre-trained model')
 parser.add_argument('--world-size', default=-1, type=int,
@@ -134,6 +136,9 @@ def main():
     if args.distributed:
         dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
                                 world_size=args.world_size)
+    if args.wandb:
+        import wandb
+        wandb.init(project="mobilenetv3")
 
     # create model
     print("=> creating model '{}'".format(args.arch))
@@ -255,6 +260,13 @@ def main():
         writer.add_scalars('loss', {'train loss': train_loss, 'validation loss': val_loss}, epoch + 1)
         writer.add_scalars('accuracy', {'train accuracy': train_acc, 'validation accuracy': prec1}, epoch + 1)
 
+        # wandb
+        if args.wandb:
+            wandb.log({'epoch': epoch, 'learning rate': lr, 'train loss': train_loss, 'validation loss': val_loss, 'train accuracy': train_acc, 'validation accuracy': prec1})
+            if is_best:
+                wandb.save("model_best.pth.tar")
+                torch.save(model.state_dict(), os.path.join(wandb.run.dir, "model_best.pth.tar"))
+
         is_best = prec1 > best_prec1
         best_prec1 = max(prec1, best_prec1)
         save_checkpoint({
@@ -264,6 +276,7 @@ def main():
             'best_prec1': best_prec1,
             'optimizer' : optimizer.state_dict(),
         }, is_best, checkpoint=args.checkpoint)
+
 
     logger.close()
     logger.plot()
